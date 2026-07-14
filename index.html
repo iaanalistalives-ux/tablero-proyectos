@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tablero de Avances · Área de Datos e IA · LIVES</title>
+<title>Tablero de Proyectos · Área de Datos e IA · LIVES</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -183,7 +183,7 @@
   <div class="topbar">
     <div class="brand">
       <span class="eyebrow">LIVES · Área de Datos e IA</span>
-      <h1>Tablero de Avances</h1>
+      <h1>Tablero de Proyectos</h1>
     </div>
     <div class="actions">
       <span class="sync" id="syncStatus">Cargando…</span>
@@ -237,7 +237,7 @@
   </div>
 
   <div class="foot">
-    Tablero de Avances · Área de Datos e Inteligencia Artificial · LIVES &nbsp;·&nbsp;
+    Tablero de Proyectos · Área de Datos e Inteligencia Artificial · LIVES &nbsp;·&nbsp;
     El tiempo se cuenta desde que creas el proyecto hasta que lo marcas como Terminado · Si algo no se logra, arrástralo a “No logrado” y registra el motivo (no se borra).
   </div>
 
@@ -750,7 +750,7 @@ function buildReport(){
     return '<tr><td><span class="rdot" style="background:'+a.color+'"></span>'+esc(a.name)+'</td><td style="text-align:center">'+items.length+'</td><td style="text-align:right">'+avgAvance(items)+'%</td><td style="text-align:right">'+(sv>0?'+'+fmt(sv)+' h/sem':'—')+'</td></tr>';
   }).join('');
   document.getElementById('report').innerHTML=
-    '<div class="rep-head"><div><div class="rep-eyebrow">LIVES · Área de Datos e IA</div><div class="rep-title">Tablero de Avances</div></div>'+
+    '<div class="rep-head"><div><div class="rep-eyebrow">LIVES · Área de Datos e IA</div><div class="rep-title">Tablero de Proyectos</div></div>'+
     '<div class="rep-meta">Generado: '+fecha+'<br>'+scope+'</div></div>'+
     '<div class="rep-kpis">'+
       '<div><b>'+avgAvance(v)+'%</b><span>Avance '+(filter==='Todas'?'global':esc(filter))+'</span></div>'+
@@ -763,7 +763,7 @@ function buildReport(){
     '<table class="rep-tbl"><thead><tr><th>Área</th><th style="text-align:center">Proyectos</th><th style="text-align:right">Avance</th><th style="text-align:right">Ahorro/sem</th></tr></thead><tbody>'+areaRows+'</tbody></table>'+
     '<div class="rep-h">Detalle de proyectos</div>'+
     '<table class="rep-tbl"><thead><tr><th>Proyecto</th><th>Área</th><th>Estado</th><th style="text-align:right">Avance</th><th>Frecuencia</th><th style="text-align:right">Ahorro/sem</th><th style="text-align:center">Modif.</th><th>Resultado / tiempo</th></tr></thead><tbody>'+detail+'</tbody></table>'+
-    '<div class="rep-foot">Tablero de Avances · Área de Datos e Inteligencia Artificial · LIVES</div>';
+    '<div class="rep-foot">Tablero de Proyectos · Área de Datos e Inteligencia Artificial · LIVES</div>';
 }
 function printReport(){buildReport();window.print();}
 window.addEventListener('beforeprint',buildReport);
