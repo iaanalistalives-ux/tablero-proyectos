@@ -958,6 +958,27 @@ body{font-family:'Barlow',sans-serif;color:var(--ink);background:var(--bg);}
 .abar-meta{font-size:11px;color:var(--muted);margin-top:3px;display:block;}
 
 /* Entregados */
+
+/* Barras horizontales top-impacto */
+.hbars{display:flex;flex-direction:column;gap:15px;}
+.hb-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px;}
+.hb-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hb-val{font-family:'Barlow Condensed';font-weight:700;font-size:14px;color:var(--teal-d);white-space:nowrap;flex-shrink:0;}
+.hb-track{height:14px;background:var(--soft);border-radius:7px;overflow:hidden;}
+.hb-fill{display:block;height:100%;border-radius:7px;transition:width .5s ease;}
+.hb-meta{font-size:11px;color:var(--muted);margin-top:4px;}
+.hb-area{font-weight:700;text-transform:uppercase;letter-spacing:.03em;font-size:10px;}
+.hb-more{font-size:12px;color:var(--muted);font-style:italic;text-align:center;padding-top:6px;border-top:1px dashed var(--line);margin-top:4px;}
+
+/* Estadísticas resumen */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr) 1.6fr;gap:14px;}
+.stat{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.stat-n{font-family:'Barlow Condensed';font-weight:700;font-size:34px;line-height:1;color:var(--teal-d);}
+.stat-l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-top:5px;line-height:1.3;}
+.stat-hi{background:var(--teal-bg);border-color:transparent;}
+.stat-top{font-weight:700;font-size:13.5px;color:var(--ink);line-height:1.25;}
+.stat-topv{font-family:'Barlow Condensed';font-weight:700;font-size:13px;color:var(--teal-d);margin-top:3px;}
+
 .done-list{display:flex;flex-direction:column;}
 .done-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);}
 .done-item:last-child{border-bottom:none;}
@@ -998,7 +1019,7 @@ body{font-family:'Barlow',sans-serif;color:var(--ink);background:var(--bg);}
 
 @media (max-width:900px){
  .dash-kpis,.dash-kpis.six{grid-template-columns:repeat(2,1fr);}.dk-main{grid-column:span 2;}
- .dash-grid{grid-template-columns:1fr;}
+ .dash-grid{grid-template-columns:1fr;}.stat-grid{grid-template-columns:1fr 1fr;}.stat-hi{grid-column:span 2;}
  .hero{gap:18px;}.hero-eqs{margin-left:0;}.hero-num{font-size:48px;}
  .rk-name{width:100px;}
 }
@@ -1111,21 +1132,39 @@ function dashCore(data,filter){
       }).join('')
     : '<div class="di-empty">No hay proyectos en curso.</div>';
 
-  /* Entregados, ordenados por impacto */
+  /* Entregados: gráfico de barras del top por impacto */
   var doneSorted=v.filter(function(d){return d.estado==='aplicado';})
     .sort(function(a,b){return horasSemDe(b)-horasSemDe(a);});
-  var doneList=doneSorted.length
-    ? doneSorted.map(function(d){
+  var topN=doneSorted.slice(0,8);
+  var restoN=doneSorted.length-topN.length;
+  var maxDone=topN.length?Math.max.apply(null,topN.map(function(d){return horasSemDe(d);})):0;
+  var barsHTML=topN.length
+    ? topN.map(function(d){
+        var col=areaColor(d.area);var hs=horasSemDe(d);
+        var w=maxDone?Math.max(2,(hs/maxDone)*100):2;
         var n=daysBetween(d.creado,d.completado);
-        var col=areaColor(d.area);
-        return '<div class="done-item">'+
-          '<span class="di-dot" style="background:'+col+'"></span>'+
-          '<span class="di-t">'+esc(d.titulo)+'</span>'+
-          '<span class="di-area" style="background:'+hexa(col,0.13)+';color:'+col+'">'+esc(d.area)+'</span>'+
-          (horasSemDe(d)>0?'<span class="di-save">+'+fmt(horasSemDe(d))+' h/sem</span>':'')+
-          '<span class="di-days">'+(n===null?'✓':durLabel(n))+'</span></div>';
-      }).join('')
+        return '<div class="hb">'+
+          '<div class="hb-top"><span class="hb-name" title="'+esc(d.titulo)+'">'+esc(d.titulo)+'</span>'+
+          '<span class="hb-val">'+(hs>0?'+'+fmt(hs)+' h/sem':'—')+'</span></div>'+
+          '<div class="hb-track"><span class="hb-fill" style="width:'+w+'%;background:'+col+'"></span></div>'+
+          '<div class="hb-meta"><span class="hb-area" style="color:'+col+'">'+esc(d.area)+'</span> · entregado '+(n===null?'':durLabel(n))+'</div>'+
+        '</div>';
+      }).join('')+
+      (restoN>0?'<div class="hb-more">+ '+restoN+' proyecto'+(restoN===1?'':'s')+' más entregado'+(restoN===1?'':'s')+' (menor impacto)</div>':'')
     : '<div class="di-empty">Aún no hay proyectos terminados.</div>';
+
+  /* Estadísticas resumen (tarjetas) */
+  var totalHrs=savedFn(v);
+  var topProj=doneSorted.length?doneSorted[0]:null;
+  var mismoDia=done.filter(function(d){return daysBetween(d.creado,d.completado)===0;}).length;
+  var areasConImpacto=data.areas.filter(function(a){return savedFn(data.items.filter(function(x){return x.area===a.name;}))>0;}).length;
+  var pctEntrega=total?Math.round((aplo/total)*100):0;
+  var statsHTML='<div class="stat-grid">'+
+    '<div class="stat"><div class="stat-n">'+pctEntrega+'%</div><div class="stat-l">de proyectos ya entregados</div></div>'+
+    '<div class="stat"><div class="stat-n">'+mismoDia+'</div><div class="stat-l">entregados el mismo día</div></div>'+
+    '<div class="stat"><div class="stat-n">'+areasConImpacto+'</div><div class="stat-l">áreas con impacto medible</div></div>'+
+    (topProj?'<div class="stat stat-hi"><div class="stat-l" style="margin-bottom:3px">Proyecto de mayor impacto</div><div class="stat-top">'+esc(topProj.titulo)+'</div><div class="stat-topv">+'+fmt(horasSemDe(topProj))+' h/sem · '+esc(topProj.area)+'</div></div>':'')+
+  '</div>';
 
   /* No logrados */
   var failItems=v.filter(function(d){return d.estado==='no_logrado';});
@@ -1148,11 +1187,12 @@ function dashCore(data,filter){
       '<div class="dash-card"><div class="dash-card-h">Impacto por área <em>horas ahorradas / semana</em></div><div class="rank">'+rankHTML+'</div></div>'+
       '<div class="dash-card"><div class="dash-card-h">Estado de los proyectos</div><div class="donut-wrap">'+donut+'<div class="legend">'+legend+'</div></div></div>'+
     '</div>'+
+    '<div class="dash-card"><div class="dash-card-h">Resumen de entrega</div>'+statsHTML+'</div>'+
     '<div class="dash-grid">'+
+      '<div class="dash-card"><div class="dash-card-h">Top proyectos por impacto <em>horas ahorradas / semana</em></div><div class="hbars">'+barsHTML+'</div></div>'+
       '<div class="dash-card"><div class="dash-card-h">Avance por área</div><div class="abars">'+areaBars+'</div></div>'+
-      '<div class="dash-card"><div class="dash-card-h">En curso ahora</div><div class="wip">'+wipHTML+'</div></div>'+
     '</div>'+
-    '<div class="dash-card"><div class="dash-card-h">Proyectos entregados <em>ordenados por impacto</em></div><div class="done-list">'+doneList+'</div></div>'+
+    (wipItems.length?'<div class="dash-card"><div class="dash-card-h">En curso ahora <em>'+wipItems.length+' proyecto'+(wipItems.length===1?'':'s')+'</em></div><div class="wip">'+wipHTML+'</div></div>':'')+
     failCard+
     nota+
   '</div>';
