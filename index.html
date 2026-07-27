@@ -380,7 +380,7 @@
              que pusiste en el Apps Script (var TOKEN = '...').
    ═══════════════════════════════════════════════════ */
 const API_URL = 'https://script.google.com/macros/s/AKfycbwCPiHtwamEFp3cj5CLCBkK7V6p8WatlKYjQbncgyJA9ve6urAAR9feAwADFejDwITv/exec';
-const TOKEN   = 'C0196';
+const TOKEN   = 'PON_AQUI_TU_TOKEN';
 /* ═══════════════════════════════════════════════════ */
 const ESTADOS=['pendiente','aplicando','aplicado','no_logrado'];
 const PALETTE=['#2a9d8f','#3a51a8','#b07d1a','#c2562f','#7b4fa3','#2f7d9a','#a23b56','#4a7c3f','#5a6470'];
@@ -430,7 +430,14 @@ function normalize(items){
 }
 
 /* ============ BACKEND: Google Sheets vía Apps Script (JSONP) ============ */
-let saveTimer=null, saving=false, dirty=false;
+/* Cola de guardado granular: en vez de reenviar TODO el tablero en cada clic
+   (lo que rompía el guardado al crecer la cantidad de proyectos, porque la
+   URL de JSONP tiene un límite de tamaño), cada cambio encola solo lo que
+   cambió: un proyecto puntual, una eliminación, o la lista de áreas (chica). */
+let saveTimer=null, flushing=false;
+const pendingItems=new Map();   // id -> snapshot del proyecto a guardar
+const pendingDeletes=new Set(); // ids a eliminar
+let pendingAreas=false;
 
 function jsonp(params,timeoutMs){
   return new Promise((resolve,reject)=>{
@@ -477,35 +484,103 @@ async function load(){
   }
 }
 
+/* Guardado inicial de la siembra (primera vez que la hoja está vacía): este sí
+   manda todo de una, pero ocurre una sola vez con pocos proyectos base. */
 async function saveNow(silent){
-  if(!persistOK&&!silent){return;}
-  if(saving){dirty=true;return;}
-  saving=true; setStatus('Guardando…','wait');
   try{
     const r=await jsonp({action:'save',token:TOKEN,payload:JSON.stringify({areas:state.areas,items:state.items})},25000);
     if(!r||!r.ok)throw new Error(r&&r.error?r.error:'Error al guardar');
+    persistOK=true;
+    if(!silent){setStatus('Guardado ✓','ok');hideNotice();}
+  }catch(e){
+    if(!silent){setStatus('No guardado','err');showNotice('No se pudieron guardar los cambios en la hoja ('+e.message+'). Tus cambios están solo en pantalla: usa Exportar para respaldarlos y vuelve a intentar.');}
+    throw e;
+  }
+}
+
+function queueItem(item){
+  pendingDeletes.delete(item.id);
+  pendingItems.set(item.id, JSON.parse(JSON.stringify(item)));
+  scheduleFlush();
+}
+function queueDelete(id){
+  pendingItems.delete(id);
+  pendingDeletes.add(id);
+  scheduleFlush();
+}
+function queueAreas(){
+  pendingAreas=true;
+  scheduleFlush();
+}
+function scheduleFlush(){
+  clearTimeout(saveTimer);
+  setStatus('Cambios sin guardar…','wait');
+  saveTimer=setTimeout(flush,800);
+}
+/* Vacía la cola de a un elemento por vez (payload chico y fijo, sin importar
+   cuántos proyectos tenga el tablero). Si un envío falla, se queda en la cola
+   y se reintenta con el próximo cambio o con "Reintentar guardado". */
+async function flush(){
+  if(flushing)return;
+  flushing=true;
+  setStatus('Guardando…','wait');
+  try{
+    while(pendingAreas||pendingItems.size||pendingDeletes.size){
+      if(pendingAreas){
+        await jsonp({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)},20000);
+        pendingAreas=false;
+      }else if(pendingDeletes.size){
+        const id=pendingDeletes.values().next().value;
+        await jsonp({action:'delete_item',token:TOKEN,id:id},20000);
+        pendingDeletes.delete(id);
+      }else if(pendingItems.size){
+        const id=pendingItems.keys().next().value;
+        const item=pendingItems.get(id);
+        await jsonp({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)},20000);
+        pendingItems.delete(id);
+      }
+    }
     persistOK=true;
     setStatus('Guardado ✓','ok');
     hideNotice();
   }catch(e){
     setStatus('No guardado','err');
-    showNotice('No se pudieron guardar los cambios en la hoja ('+e.message+'). Tus cambios están solo en pantalla: usa Exportar para respaldarlos y vuelve a intentar.');
+    showNotice('No se pudieron guardar algunos cambios en la hoja ('+e.message+'). Tus cambios siguen en pantalla y se reintentarán solos con el próximo cambio, o usa "Reintentar guardado". Mientras tanto, usa Exportar para respaldarlos.'+
+      ' <button class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:6px" onclick="scheduleFlush()">Reintentar guardado</button>');
   }finally{
-    saving=false;
-    if(dirty){dirty=false;saveNow(true);}
+    flushing=false;
   }
 }
+function hayPendientes(){return pendingAreas||pendingItems.size>0||pendingDeletes.size>0;}
 
-/* save() se llama en todo el tablero; aquí lo hacemos con retardo para no saturar */
-function save(){
-  clearTimeout(saveTimer);
-  setStatus('Cambios sin guardar…','wait');
-  saveTimer=setTimeout(()=>saveNow(),800);
+/* Reemplazo total (solo Importar): en vez de mandar todo en una sola URL
+   (que se rompe si el archivo trae muchos proyectos), se hace en pasos chicos:
+   1) borra todos los proyectos de la hoja, 2) guarda la lista de áreas,
+   3) siembra cada proyecto importado uno por uno. */
+async function importarATodaLaHoja(){
+  pendingItems.clear();pendingDeletes.clear();pendingAreas=false;
+  clearTimeout(saveTimer);flushing=true;
+  setStatus('Guardando…','wait');
+  try{
+    await jsonp({action:'clear_items',token:TOKEN},20000);
+    await jsonp({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)},20000);
+    for(const item of state.items){
+      await jsonp({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)},20000);
+    }
+    persistOK=true;
+    setStatus('Guardado ✓','ok');
+    hideNotice();
+  }catch(e){
+    setStatus('No guardado','err');
+    showNotice('La importación se cortó a mitad de camino ('+e.message+'). Revisa la hoja de Google: puede haber quedado incompleta. Vuelve a intentar la importación cuando se recupere la conexión.');
+  }finally{
+    flushing=false;
+  }
 }
 
 function showNotice(msg){
   const n=document.getElementById('notice');
-  n.textContent=msg;
+  n.innerHTML=msg; /* puede incluir un botón de reintento (contenido siempre generado por este archivo, no por datos externos) */
   n.classList.add('show');
 }
 function hideNotice(){document.getElementById('notice').classList.remove('show');}
@@ -651,7 +726,7 @@ function drop(e){
   else{it.completado='';}
   if(nuevo==='pendiente')it.avance=0;
   else if(nuevo==='aplicando'&&(it.avance===0||it.avance===100))it.avance=50;
-  save();render();
+  queueItem(it);render();
 }
 
 /* item modal */
@@ -717,13 +792,15 @@ function saveItem(){
     avance:+document.getElementById('f-avance').value,frecuencia:document.getElementById('f-frecuencia').value,
     horasPorVez:+document.getElementById('f-horasvez').value||0,vecesMod:+document.getElementById('f-vecesmod').value||0,
     motivo,notas:document.getElementById('f-notas').value.trim(),creado,completado};
-  if(id){Object.assign(state.items.find(d=>d.id===id),obj);}else{state.items.push({id:uid(),...obj});}
-  save();render();closeModal();
+  let saved;
+  if(id){saved=Object.assign(state.items.find(d=>d.id===id),obj);}
+  else{saved={id:uid(),...obj};state.items.push(saved);}
+  queueItem(saved);render();closeModal();
 }
 function deleteItem(){
   const id=document.getElementById('f-id').value;if(!id)return;
   if(confirm('¿Eliminar este proyecto? (Si no se logró, mejor muévelo a “No logrado” con su motivo en vez de borrarlo.)')){
-    state.items=state.items.filter(d=>d.id!==id);save();render();closeModal();
+    state.items=state.items.filter(d=>d.id!==id);queueDelete(id);render();closeModal();
   }
 }
 
@@ -779,7 +856,7 @@ function renderAreaList(){
     ed.onclick=()=>{editIdx=i;editColor=a.color;renderAreaList();};
     const btn=document.createElement('button');btn.className='arm';btn.textContent='×';
     btn.title=used?'Tiene proyectos, no se puede eliminar':'Eliminar área';btn.disabled=used>0;
-    btn.onclick=()=>{if(confirm('¿Eliminar el área "'+a.name+'"?')){state.areas.splice(i,1);save();renderAreaList();render();}};
+    btn.onclick=()=>{if(confirm('¿Eliminar el área "'+a.name+'"?')){state.areas.splice(i,1);queueAreas();renderAreaList();render();}};
     row.appendChild(ed);row.appendChild(btn);l.appendChild(row);
   });
 }
@@ -794,19 +871,20 @@ function guardarArea(i,nuevoNombre){
   const viejo=a.name;
   const color=editColor||a.color;
   if(nombre!==viejo){
-    // cascada: los proyectos siguen a su área
-    state.items.forEach(it=>{if(it.area===viejo)it.area=nombre;});
+    // cascada: los proyectos siguen a su área (y hay que reguardar cada uno,
+    // porque el guardado ahora es por-proyecto, no un volcado de todo el estado)
+    state.items.forEach(it=>{if(it.area===viejo){it.area=nombre;queueItem(it);}});
     if(filter===viejo)filter=nombre;
     if(typeof dashFilter!=='undefined'&&dashFilter===viejo)dashFilter=nombre;
   }
   a.name=nombre; a.color=color;
   editIdx=-1; editColor=null;
-  save(); renderAreaList(); render();
+  queueAreas(); renderAreaList(); render();
 }
 function addArea(){
   const name=document.getElementById('na-name').value.trim();if(!name)return;
   if(state.areas.some(a=>a.name.toLowerCase()===name.toLowerCase())){alert('Ya existe un área con ese nombre.');return;}
-  state.areas.push({name,color:pickColor});save();
+  state.areas.push({name,color:pickColor});queueAreas();
   document.getElementById('na-name').value='';pickColor=PALETTE[state.areas.length%PALETTE.length];
   renderSwatches();renderAreaList();render();
 }
@@ -823,7 +901,8 @@ function importData(ev){
       else if(p&&p.items){state={areas:(p.areas&&p.areas.length?p.areas:DEFAULT_AREAS.slice()),items:normalize(p.items)};}
       else{alert('El archivo no tiene el formato esperado.');return;}
       if(!confirm('Esto REEMPLAZARÁ todo el contenido de la hoja de Google con el archivo importado. ¿Continuar?')){ev.target.value='';return;}
-      save();render();
+      render();
+      importarATodaLaHoja();
     }catch(e){alert('No se pudo leer el archivo.');}
     ev.target.value='';
   };
@@ -1306,7 +1385,10 @@ function obsRender(){
   vf.querySelectorAll('.vchip').forEach(c=>c.addEventListener('click',()=>{obsFilter=decodeURIComponent(c.dataset.f);obsRender();}));
 }
 
-async function recargar(){await load();render();}
+async function recargar(){
+  if(hayPendientes()&&!confirm('Tienes cambios sin guardar. Si recargas ahora, se pierden (se reemplazan por lo que hay en la hoja). ¿Recargar de todas formas?')){return;}
+  await load();render();
+}
 
 (async function init(){
   if(esModoObservador()){ await initObservador(); return; }
