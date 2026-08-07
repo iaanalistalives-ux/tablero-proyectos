@@ -520,6 +520,17 @@ function scheduleFlush(){
 /* Vacía la cola de a un elemento por vez (payload chico y fijo, sin importar
    cuántos proyectos tenga el tablero). Si un envío falla, se queda en la cola
    y se reintenta con el próximo cambio o con "Reintentar guardado". */
+/* Revisa la respuesta del servidor: si la acción no existe en el backend
+   (por ejemplo, porque el Apps Script todavía no tiene la versión nueva
+   desplegada), el servidor puede responder sin error explícito. Por eso NO
+   basta con que el jsonp no truene: hay que confirmar r.ok === true. */
+async function saveAction_(params){
+  const r = await jsonp(params, 20000);
+  if(!r || r.ok !== true){
+    throw new Error((r&&r.error) ? r.error : 'El servidor no confirmó el guardado (¿el Apps Script tiene la versión más reciente desplegada?)');
+  }
+  return r;
+}
 async function flush(){
   if(flushing)return;
   flushing=true;
@@ -527,16 +538,16 @@ async function flush(){
   try{
     while(pendingAreas||pendingItems.size||pendingDeletes.size){
       if(pendingAreas){
-        await jsonp({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)},20000);
+        await saveAction_({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)});
         pendingAreas=false;
       }else if(pendingDeletes.size){
         const id=pendingDeletes.values().next().value;
-        await jsonp({action:'delete_item',token:TOKEN,id:id},20000);
+        await saveAction_({action:'delete_item',token:TOKEN,id:id});
         pendingDeletes.delete(id);
       }else if(pendingItems.size){
         const id=pendingItems.keys().next().value;
         const item=pendingItems.get(id);
-        await jsonp({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)},20000);
+        await saveAction_({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)});
         pendingItems.delete(id);
       }
     }
@@ -545,7 +556,7 @@ async function flush(){
     hideNotice();
   }catch(e){
     setStatus('No guardado','err');
-    showNotice('No se pudieron guardar algunos cambios en la hoja ('+e.message+'). Tus cambios siguen en pantalla y se reintentarán solos con el próximo cambio, o usa "Reintentar guardado". Mientras tanto, usa Exportar para respaldarlos.'+
+    showNotice('No se pudieron guardar algunos cambios en la hoja ('+e.message+'). Tus cambios siguen en pantalla y se reintentarán solos con el próximo cambio, o usa "Reintentar guardado". Mientras tanto, usa Exportar para respaldarlos. <b>No cierres ni recargues esta pestaña</b> hasta que diga "Guardado ✓".'+
       ' <button class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:6px" onclick="scheduleFlush()">Reintentar guardado</button>');
   }finally{
     flushing=false;
@@ -562,10 +573,10 @@ async function importarATodaLaHoja(){
   clearTimeout(saveTimer);flushing=true;
   setStatus('Guardando…','wait');
   try{
-    await jsonp({action:'clear_items',token:TOKEN},20000);
-    await jsonp({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)},20000);
+    await saveAction_({action:'clear_items',token:TOKEN});
+    await saveAction_({action:'save_areas',token:TOKEN,payload:JSON.stringify(state.areas)});
     for(const item of state.items){
-      await jsonp({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)},20000);
+      await saveAction_({action:'upsert_item',token:TOKEN,payload:JSON.stringify(item)});
     }
     persistOK=true;
     setStatus('Guardado ✓','ok');
@@ -1384,6 +1395,17 @@ function obsRender(){
   }).join('');
   vf.querySelectorAll('.vchip').forEach(c=>c.addEventListener('click',()=>{obsFilter=decodeURIComponent(c.dataset.f);obsRender();}));
 }
+
+/* Aviso a nivel de navegador: si cierras la pestaña o le das F5 con cambios
+   sin guardar, el navegador pregunta antes de perderlos (esto NO se puede
+   evitar con un mensaje personalizado, es una restricción de los navegadores,
+   pero sí evita que se pierdan datos por accidente). */
+window.addEventListener('beforeunload', function(e){
+  if(hayPendientes()){
+    e.preventDefault();
+    e.returnValue='';
+  }
+});
 
 async function recargar(){
   if(hayPendientes()&&!confirm('Tienes cambios sin guardar. Si recargas ahora, se pierden (se reemplazan por lo que hay en la hoja). ¿Recargar de todas formas?')){return;}
