@@ -314,7 +314,7 @@
         <div class="field">
           <label for="f-frecuencia">Frecuencia</label>
           <select id="f-frecuencia">
-            <option value="diaria">Diaria (5 días/sem)</option>
+            <option value="diaria">Diaria (6 días/sem)</option>
             <option value="semanal" selected>Semanal</option>
             <option value="quincenal">Quincenal</option>
             <option value="mensual">Mensual</option>
@@ -395,7 +395,7 @@ let state={areas:[],items:[]}; let filter='Todas'; let persistOK=true; let pickC
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function daysBetween(a,b){if(!a||!b)return null;const d1=new Date(a+'T00:00:00'),d2=new Date(b+'T00:00:00');return Math.max(0,Math.round((d2-d1)/86400000));}
 function durLabel(n){return n===null?'':(n===0?'el mismo día':('en '+n+' día'+(n===1?'':'s')));}
-var FREQ={diaria:{label:'Diaria (5 días/sem)',factorSem:5},semanal:{label:'Semanal',factorSem:1},quincenal:{label:'Quincenal',factorSem:0.5},mensual:{label:'Mensual',factorSem:0.23},unica:{label:'Única vez',factorSem:0}};
+var FREQ={diaria:{label:'Diaria (6 días/sem)',factorSem:6},semanal:{label:'Semanal',factorSem:1},quincenal:{label:'Quincenal',factorSem:0.5},mensual:{label:'Mensual',factorSem:0.23},unica:{label:'Única vez',factorSem:0}};
 function freqLabel(f){return (FREQ[f]||FREQ.semanal).label;}
 function horasSemDe(it){var f=FREQ[it.frecuencia]||FREQ.semanal;return (+it.horasPorVez||0)*f.factorSem;}
 function ritmoMod(it){var d=daysBetween(it.creado,todayISO());if(d===null||d<7)return null;return Math.round((((+it.vecesMod||0)/(d/7)))*10)/10;}
@@ -935,7 +935,7 @@ function buildReport(){
     const hs=horasSemDe(it);
     const ah=(hs>0&&(it.estado==='aplicado'||it.estado==='aplicando'))?('+'+fmt(hs)+' h/sem'):'—';
     const mod=(+it.vecesMod>0)?(''+(+it.vecesMod)):'—';
-    return '<tr><td>'+esc(it.titulo)+'</td><td>'+esc(it.area)+'</td><td>'+estadoLabel(it.estado)+'</td><td style="text-align:right">'+(+it.avance||0)+'%</td><td>'+freqLabel(it.frecuencia).replace(' (5 días/sem)','')+'</td><td style="text-align:right">'+ah+'</td><td style="text-align:center">'+mod+'</td><td>'+esc(res)+'</td></tr>';
+    return '<tr><td>'+esc(it.titulo)+'</td><td>'+esc(it.area)+'</td><td>'+estadoLabel(it.estado)+'</td><td style="text-align:right">'+(+it.avance||0)+'%</td><td>'+freqLabel(it.frecuencia).replace(' (6 días/sem)','')+'</td><td style="text-align:right">'+ah+'</td><td style="text-align:center">'+mod+'</td><td>'+esc(res)+'</td></tr>';
   }).join('')||'<tr><td colspan="8" style="color:var(--muted)">Sin proyectos</td></tr>';
   const areaRows=state.areas.filter(a=>filter==='Todas'||a.name===filter).map(a=>{
     const items=state.items.filter(x=>x.area===a.name);const sv=savedFn(items);
@@ -1253,7 +1253,7 @@ function dashCore(data,filter){
 
   /* Nota de método: transparencia de los supuestos */
   var nota='<div class="dash-note"><b>Cómo se calcula:</b> el ahorro semanal de cada proyecto es '+
-    '<b>horas ahorradas por vez × frecuencia</b> (diaria = 5 días/semana; mensual ≈ 0.23 semanas). '+
+    '<b>horas ahorradas por vez × frecuencia</b> (diaria = 6 días/semana; mensual ≈ 0.23 semanas). '+
     'Solo se cuentan los proyectos <b>Terminados</b> y <b>En aplicación</b>. '+
     'Las equivalencias asumen <b>4.33 semanas/mes</b> y una jornada de <b>48 h/semana</b> por persona.</div>';
 
