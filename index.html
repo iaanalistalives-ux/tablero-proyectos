@@ -296,27 +296,51 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:Calibri,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4;}
 
-  .topbar{background:var(--petrol);border-bottom:3px solid var(--emer);padding:14px clamp(16px,2.2vw,40px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:20;}
+  .topbar{background:var(--petrol);border-bottom:3px solid var(--emer);padding:14px clamp(16px,2.2vw,40px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
   .topbar-brand{display:flex;align-items:center;gap:14px;}
   .topbar-logo{height:34px;display:block;}
   .brand{display:flex;flex-direction:column;}
   .brand .eyebrow{font-family:Calibri,Arial,sans-serif;font-weight:600;letter-spacing:.2em;text-transform:uppercase;font-size:10px;color:#8FB3AC;}
   .brand h1{font-family:Calibri,Arial,sans-serif;font-weight:700;font-size:22px;line-height:1;letter-spacing:.01em;color:#fff;}
   .actions{display:flex;gap:8px;flex-wrap:wrap;}
-  /* Dentro del portal (iframe): el portal ya muestra marca y título; se ocultan logo y
-     título, y la barra queda solo con los botones (no se puede ocultar entera: los tiene). */
-  html.embebido .topbar-brand{display:none!important;}
-  html.embebido .topbar{position:static;padding:10px clamp(16px,2.2vw,40px);justify-content:flex-end;}
+  /* Dentro del portal (iframe): el portal ya muestra marca y título, así que el header se
+     oculta entero. Los botones viven en la barra blanca de abajo y siguen visibles. */
+  html.embebido .topbar{display:none!important;}
   html.embebido .dash-bar .db-brand{display:none!important;}
   html.embebido body{padding-top:0!important;margin-top:0!important;}
   button{font-family:Calibri,Arial,sans-serif;cursor:pointer;border:none;border-radius:7px;font-size:13px;font-weight:600;padding:9px 14px;transition:.15s;}
   button:focus-visible{outline:2px solid var(--emer);outline-offset:2px;}
   .btn-primary{background:var(--teal);color:#fff;} .btn-primary:hover{background:var(--teal-d);}
-  .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);} .btn-ghost:hover{background:rgba(255,255,255,.22);}
-  .sync{font-size:11.5px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.25);color:#fff;background:rgba(255,255,255,.10);white-space:nowrap;align-self:center;}
-  .sync.ok{color:#fff;background:rgba(16,185,129,.28);border-color:transparent;}
-  .sync.wait{color:#fff;background:rgba(245,158,11,.30);border-color:transparent;}
-  .sync.err{color:#fff;background:rgba(220,38,38,.35);border-color:transparent;}
+  .btn-ghost{background:#fff;color:var(--teal);border:1px solid var(--line);} .btn-ghost:hover{border-color:var(--teal);background:var(--teal-bg);}
+  .sync{font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;white-space:nowrap;align-self:center;
+        color:var(--muted);background:var(--soft);border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px;}
+  .sync::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.85;}
+  .sync.ok{color:var(--teal);background:var(--teal-bg);border-color:transparent;}
+  .sync.wait{color:var(--amber-d);background:var(--amber-bg);border-color:transparent;}
+  .sync.err{color:var(--red);background:var(--red-bg);border-color:transparent;}
+
+  /* Barra de acciones: tarjeta blanca dentro del tablero, fija al hacer scroll */
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card);border-radius:var(--r);
+           box-shadow:var(--sh);padding:10px 12px;margin-bottom:16px;position:sticky;top:10px;z-index:15;}
+  .tb{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:13.5px;font-weight:700;
+      color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 15px;min-height:40px;
+      cursor:pointer;transition:background .15s,border-color .15s,color .15s,box-shadow .15s,transform .05s;}
+  .tb svg{width:17px;height:17px;flex:none;fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .tb:hover{border-color:var(--teal);color:var(--teal-d);background:var(--teal-bg);box-shadow:var(--sh);}
+  .tb:active{transform:translateY(1px);}
+  .tb:focus-visible{outline:3px solid rgba(15,122,90,.35);outline-offset:2px;}
+  .tb-primary{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 2px 6px rgba(15,122,90,.25);}
+  .tb-primary svg{stroke:#fff;stroke-width:2.6;}
+  .tb-primary:hover{background:var(--teal-d);border-color:var(--teal-d);color:#fff;}
+  .tb-sep{width:1px;height:26px;background:var(--line);margin:0 4px;}
+  .tb-spacer{margin-left:auto;}
+  @media (max-width:760px){
+    .toolbar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;top:0;padding:8px 10px;}
+    .toolbar::-webkit-scrollbar{display:none;}
+    .toolbar>*{flex:none;}
+    .tb{min-height:44px;font-size:14px;}
+    .tb-spacer{display:none;}
+  }
 
   .wrap{width:100%;max-width:none;margin:0 auto;padding:22px clamp(16px,2.2vw,40px) 60px;}
   .notice{background:#fff7e6;border:1px solid var(--amber);color:var(--amber-d);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:18px;display:none;}
@@ -487,7 +511,7 @@
   .dash-win .dash-scroll{overflow:auto;flex:1;background:var(--bg);}
 
   @media print{
-    .topbar,.wrap,.foot,.overlay{display:none !important;}
+    .topbar,.wrap,.toolbar,.foot,.overlay{display:none !important;}
     body{background:#fff;}
     #report{display:block;padding:12mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .rep-tbl tr{break-inside:avoid;}
@@ -512,17 +536,19 @@
         <h1>Tablero de Proyectos</h1>
       </div>
     </div>
-    <div class="actions">
-      <span class="sync" id="syncStatus">Cargando…</span>
-      <button class="btn-primary" onclick="openModal()">+ Nuevo proyecto</button>
-      <button class="btn-ghost" onclick="openDash()">Dashboard</button>
-      <button class="btn-ghost" onclick="openAreas()">Áreas</button>
-      <button class="btn-ghost" onclick="recargar()" title="Traer los últimos datos de la base de datos">↻ Recargar</button>
-      <button class="btn-ghost" onclick="printReport()">Imprimir / PDF</button>
-    </div>
   </div>
 
   <div class="wrap">
+    <div class="toolbar">
+      <button class="tb tb-primary" onclick="openModal()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo proyecto</span></button>
+      <span class="tb-sep"></span>
+      <button class="tb" onclick="openDash()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Dashboard</span></button>
+      <button class="tb" onclick="openAreas()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span>Áreas</span></button>
+      <button class="tb" onclick="recargar()" title="Traer los últimos datos de la base de datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span>Recargar</span></button>
+      <button class="tb" onclick="printReport()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span>Imprimir / PDF</span></button>
+      <span class="tb-spacer"></span>
+      <span class="sync" id="syncStatus">Cargando…</span>
+    </div>
     <div class="notice" id="notice"></div>
 
     <div class="kpis">
