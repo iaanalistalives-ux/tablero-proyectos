@@ -627,8 +627,39 @@
   .dash-fs-bar .grp{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   .dash-win .dash-scroll{overflow:auto;flex:1;background:var(--bg);}
 
+
+  /* ---- Entrada = dashboard; registros en ventana dentro de la página ---- */
+  #vistaDash{padding:14px clamp(12px,2.2vw,32px) 28px;}
+  #vistaDash .dtb,#vistaDash .viewer-filters{max-width:1180px;margin-left:auto;margin-right:auto;}
+  #vistaDash .dtb{top:8px;}
+  #vistaDash .viewer-filters{margin-bottom:4px;}
+  #vistaDash .dash{padding-left:0;padding-right:0;}
+  .tb:disabled,.tb[disabled]{cursor:not-allowed;background:#EEF2F0;border-color:var(--line);color:#8A9A95;box-shadow:none;}
+  .tb:disabled svg{stroke:#8A9A95;}
+  .tb-primary:disabled{background:#C9D6D1;border-color:#C9D6D1;color:#fff;}
+  .tb-primary:disabled svg{stroke:#fff;}
+  #regOverlay{position:fixed;inset:0;z-index:40;background:rgba(14,59,54,.45);display:none;padding:16px;}
+  #regOverlay.show{display:block;}
+  .reg-win{background:var(--bg);border-radius:14px;height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.30);}
+  .reg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;flex:none;}
+  .reg-t{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;color:var(--ink);}
+  .reg-t svg{width:20px;height:20px;fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .reg-x{font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 14px;min-height:40px;cursor:pointer;}
+  .reg-x:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-bg);}
+  .reg-body{overflow:auto;flex:1;-webkit-overflow-scrolling:touch;}
+  .reg-body .toolbar{top:8px;}
+  body.reg-open{overflow:hidden;}
+  @media (max-width:760px){
+    #regOverlay{padding:0;}
+    .reg-win{border-radius:0;}
+    #vistaDash{padding:8px 8px 24px;}
+  }
   @media print{
-    .topbar,.wrap,.toolbar,.foot,.overlay{display:none !important;}
+    .topbar,.wrap,.toolbar,.foot,.overlay,#regOverlay{display:none !important;}
+    body:not(.imp-dash) #vistaDash{display:none !important;}
+    body.imp-dash #report{display:none !important;}
+    body.imp-dash #vistaDash{padding:0;max-width:none;}
+    body.imp-dash #vistaDash .viewer-filters{display:none !important;}
     body{background:#fff;}
     #report{display:block;padding:12mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .rep-tbl tr{break-inside:avoid;}
@@ -655,11 +686,32 @@
     </div>
   </div>
 
+  <!-- Entrada: el dashboard. Los registros (tablero kanban) se abren en una ventana encima. -->
+  <div id="vistaDash">
+    <div class="toolbar dtb">
+      <button class="tb tb-primary" id="btnRegistros" onclick="abrirRegistros()" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><span>Mis registros</span></button>
+      <span class="tb-sep"></span>
+      <button class="tb" onclick="recargarDash()" title="Traer los últimos datos de la base de datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span>Recargar</span></button>
+      <button class="tb" onclick="downloadDash()" title="Archivo suelto para enviar por correo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></svg><span>Descargar HTML</span></button>
+      <button class="tb" onclick="imprimirDash()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span>Imprimir / PDF</span></button>
+      <span class="tb-spacer"></span>
+      <span class="sync wait" id="dStatus">Cargando…</span>
+    </div>
+    <div class="viewer-filters" id="vf"></div>
+    <div id="dashRoot"></div>
+  </div>
+
+  <div id="regOverlay" role="dialog" aria-modal="true" aria-label="Mis registros">
+    <div class="reg-win">
+      <div class="reg-head">
+        <div class="reg-t"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><span>Mis registros · Tablero de proyectos</span></div>
+        <button class="reg-x" onclick="cerrarRegistros()" title="Cerrar y volver al dashboard">✕ Cerrar</button>
+      </div>
+      <div class="reg-body">
   <div class="wrap">
     <div class="toolbar">
       <button class="tb tb-primary" onclick="openModal()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo proyecto</span></button>
       <span class="tb-sep"></span>
-      <button class="tb" onclick="openDash()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Dashboard</span></button>
       <button class="tb" onclick="openAreas()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span>Áreas</span></button>
       <button class="tb" onclick="recargar()" title="Traer los últimos datos de la base de datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span>Recargar</span></button>
       <button class="tb" onclick="printReport()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span>Imprimir / PDF</span></button>
@@ -710,6 +762,9 @@
   <div class="foot">
     Tablero de Proyectos · Área de Datos e Inteligencia Artificial · LIVES &nbsp;·&nbsp;
     El tiempo se cuenta desde que creas el proyecto hasta que lo marcas como Terminado · Si algo no se logra, arrástralo a “No logrado” y registra el motivo (no se borra).
+  </div>
+      </div>
+    </div>
   </div>
 
   <div id="dashOverlay" class="dash-fs">
@@ -877,7 +932,8 @@ const pendingItems=new Map();   // id -> snapshot del proyecto a guardar
 const pendingDeletes=new Set(); // ids a eliminar
 let pendingAreas=false;
 let cargado=false;              // true solo si los datos vinieron de la base
-let permiso=null;               // 'editar' | 'ver' | null
+let permiso=null;
+let ultimoError='';             // motivo de la última carga fallida
 
 function mensajeError(j,status){
   let m=(j&&(j.message||j.msg||j.error_description||j.error))||'';
@@ -936,7 +992,7 @@ async function load(){
       showNotice('El tablero está vacío en la base de datos. Si es la primera vez, falta pasar los proyectos que estaban en Google Sheets.');
     }
   }catch(e){
-    cargado=false; persistOK=false; permiso=null;
+    cargado=false; persistOK=false; permiso=null; ultimoError=e.message;
     state={areas:[],items:[]};
     setStatus('Sin conexión','err');
     showNotice('No se pudieron cargar los proyectos: '+esc(e.message)+
@@ -947,6 +1003,7 @@ async function load(){
    una lista vacía o de ejemplo borraría las reales. */
 function puedeEditar(){
   if(!cargado){alert('Todavía no se cargaron los proyectos de la base de datos. Pulsa "Recargar" y vuelve a intentar.');return false;}
+  if(esSupervision()){alert('Modo supervisión: puedes revisar todo, pero nada se guarda.');return false;}
   if(permiso!=='editar'){alert('Tu usuario puede ver el tablero, pero no editarlo.');return false;}
   return true;
 }
@@ -1368,7 +1425,9 @@ function importData(ev){
   r.readAsText(file);
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAreas();}});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
+  const m=document.getElementById('overlay').classList.contains('show')||document.getElementById('overlayAreas').classList.contains('show');
+  if(m){closeModal();closeAreas();}else if(document.getElementById('regOverlay').classList.contains('show')){cerrarRegistros();}});
 document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
 document.getElementById('overlayAreas').addEventListener('click',e=>{if(e.target.id==='overlayAreas')closeAreas();});
 
@@ -1794,11 +1853,60 @@ async function recargar(){
   await load();render();
 }
 
-(async function init(){
-  if(esModoObservador()){ await initObservador(false); return; }
-  await load();
-  if(cargado&&permiso==='ver'){ await initObservador(true); return; }
+/* ---- Entrada: dashboard para todos; "Mis registros" abre el tablero en una ventana ---- */
+function esSupervision(){try{return !!(window.LIVES_SESION&&LIVES_SESION.supervision());}catch(e){return false;}}
+function ponerBotonRegistros(){
+  const b=document.getElementById('btnRegistros');if(!b)return;
+  const ok=cargado&&(permiso==='editar'||esSupervision());
+  b.disabled=!ok;
+  b.title=ok?'Abrir el tablero para agregar o actualizar proyectos':'Solo para quien registra';
+  b.querySelector('span').textContent=ok?'Mis registros':'Mis registros · solo para quien registra';
+}
+function pintarDash(){
+  const st=document.getElementById('dStatus');
+  if(!cargado){
+    st.className='sync err';st.textContent='Sin conexión';
+    document.getElementById('vf').innerHTML='';
+    document.getElementById('dashRoot').innerHTML=
+      '<div class="dash"><div class="dash-card"><div class="dash-card-h">No se pudieron cargar los proyectos</div>'+
+      '<p style="font-size:13px;color:var(--stone)">'+esc(ultimoError||'No hay conexión con la base de datos.')+' Pulsa <b>Recargar</b> para intentar de nuevo.</p></div></div>';
+  }else{
+    st.className='sync ok';st.textContent=(permiso==='editar'?'En vivo':'Solo lectura · en vivo');
+    obsRender();
+  }
+  ponerBotonRegistros();
+}
+async function recargarDash(){
+  if(hayPendientes()){await flush();}
+  const st=document.getElementById('dStatus');st.className='sync wait';st.textContent='Cargando…';
+  await load();render();pintarDash();
+}
+function imprimirDash(){document.body.classList.add('imp-dash');window.print();}
+window.addEventListener('afterprint',()=>document.body.classList.remove('imp-dash'));
+function abrirRegistros(){
+  if(document.getElementById('btnRegistros').disabled)return;
   render();
+  document.getElementById('regOverlay').classList.add('show');
+  document.body.classList.add('reg-open');
+}
+async function cerrarRegistros(){
+  if(document.getElementById('overlay').classList.contains('show')||document.getElementById('overlayAreas').classList.contains('show')){
+    if(!confirm('¿Salir sin guardar? Hay una ventana abierta con datos que todavía no guardaste.'))return;
+    closeModal();closeAreas();
+  }
+  if(hayPendientes()){
+    await flush();
+    if(hayPendientes()&&!confirm('¿Salir sin guardar? Algunos cambios no se pudieron guardar todavía (revisa el aviso). Si sales, se pierden.'))return;
+  }
+  document.getElementById('regOverlay').classList.remove('show');
+  document.body.classList.remove('reg-open');
+  await recargarDash();
+}
+
+(async function init(){
+  await load();
+  render();
+  pintarDash();
 })();
 </script>
 
